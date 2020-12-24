@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# Extract nth paragraph of text supplied via stdin (starting from zeroth)
+#
+# $ printf '%s\n\n%s\n\n%s\n' "a" "b" "c" | para 1
+# b
+
+awk -v n="$1" '
+i == n && !/^\s*$/ { print }
+/^\s*$/ { i += 1 }'
