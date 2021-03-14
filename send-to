@@ -1,0 +1,67 @@
+#!/bin/sh
+
+prompt() {
+    rofi -p "${1:-Enter string:}" -dmenu
+}
+
+save_article() {
+    filename=$(prompt "Enter filename:")
+    echo fofo "$filename"
+    cp "$1" "$HOME/docs/articles/$filename"
+}
+
+main() {
+    default_sinks=(visidata
+                   parma
+                   parma-bookmark
+                   notify-send)
+
+    pdf_sinks=(zathura save-article)
+
+    sinks=(${default_sinks[@]})
+
+    while [[ "$1" == -* ]]; do
+        case "$1" in
+            -t|--type)
+                content_type="$2"
+                shift
+                ;;
+        esac
+
+        shift
+    done
+
+    if [ -n "$content_type" ]; then
+        case "$content_type" in
+            application/pdf)
+                sinks=(${sinks[@]} ${pdf_sinks[@]})
+                ;;
+        esac
+    fi
+
+    choice="$(printf '%s\n' "${sinks[@]}" | prompt "Send to")"
+
+    case "$choice" in
+        visidata)
+            kitty -e vd "$1"
+            ;;
+        parma)
+            parma new "$(cat "$1")"
+            ;;
+        parma-bookmark)
+            parma new -t bookmark "$(cat "$1")"
+            ;;
+        notify-send)
+            notify-send send-to "$(cat "$1")"
+            ;;
+        save-article)
+            save_article "$1"
+            ;;
+        zathura)
+            zathura "$1"
+            ;;
+    esac
+}
+
+
+main "$@"
