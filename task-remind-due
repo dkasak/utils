@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Use notify-send to remind of due or overdue TaskWarrior tasks.
+# Remind of due or overdue TaskWarrior tasks.
 #
 # Best used with anacron or similar.
 
@@ -9,5 +9,7 @@ export DISPLAY=:1
 
 task \( +DUE and not +OVERDUE \) or +OVERDUE export \
     | jq '.[] | .description' 2>/dev/null           \
-    | xargs --no-run-if-empty -n1 notify-send -t 0  \
-            -u low remind
+    | xargs --no-run-if-empty -n1 notify-send \
+            -a remind \
+            -t 0 \
+            -u low
