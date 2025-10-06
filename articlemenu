@@ -7,16 +7,26 @@
 # requires rofi xdg-open
 
 ARTICLE_STORE=~/docs/articles
+PRESENTATION_STORE=~/docs/presentations
+MANUAL_STORE=~/docs/manuals
+VULNERABILITY_REPORT_STORE=~/docs/vulnerability-reports
 
 getarticles() {
-    find "$ARTICLE_STORE" \( -type f -or -type l \) -and -not -path '*/.*' -printf '%P\0'
+    find "$ARTICLE_STORE" "$MANUAL_STORE" "$VULNERABILITY_REPORT_STORE" "$PRESENTATION_STORE" \
+        \( -type f -or -type l \) -and -not -path '*/.*' -printf '%P\0'
 }
 
 launchreader() {
     # shellcheck disable=SC2039
-    local article
     read -r article
-    xdg-open "$ARTICLE_STORE/$article"
+
+    if [ -r "$ARTICLE_STORE/$article" ]; then
+        xdg-open "$ARTICLE_STORE/$article"
+    elif [ -r "$MANUAL_STORE/$article" ]; then
+        xdg-open "$MANUAL_STORE/$article"
+    elif [ -r "$VULNERABILITY_REPORT_STORE/$article" ]; then
+        xdg-open "$VULNERABILITY_REPORT_STORE/$article"
+    fi
 }
 
 menu() {
@@ -26,7 +36,7 @@ menu() {
 choice=$(getarticles | sort -z | sed -e 's/\x0/\n/g' | menu)
 
 if [ -z "$choice" ]; then
-    exit -1
+    exit 1
 fi
 
 printf "%s" "$choice" | launchreader
