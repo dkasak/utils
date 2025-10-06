@@ -8,7 +8,7 @@
 # its state. Toggles the redshift instance on signal USR1.
 #
 # By default, the status message is a Font Awesome light bulb, filled out
-# (codepoint f834) when redshift is turned on and hollow (codepoint f835) when
+# (codepoint f0335) when redshift is turned on and hollow (codepoint f0336) when
 # off. It's also wrapped in polybar/lemonbar colour codes based on redshift's
 # current temperature.
 #
@@ -19,8 +19,8 @@
 # optional: polybar
 
 ### CONFIG
-redshift_off=""
-redshift_on=""
+redshift_off=""
+redshift_on="󰌵"
 
 colorize="on"
 color1="#65737E"
