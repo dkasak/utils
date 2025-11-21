@@ -1,29 +1,29 @@
 #!/bin/sh --
 # bookmenu - create a menu using calibredb
 
-# Copyright (c) 2017 Damir Jelić.
+# Copyright (c) 2017–2025 Damir Jelić, Denis Kasak.
 # Distributed under the ISC licence.
 
 # requires calibredb jq rofi xdg-open
 
-getbooks() {
-    calibredb list --fields=title,formats --for-machine
+get_books() {
+    calibredb list --fields=title,authors,formats --for-machine
 }
 
-readtitles() {
-    jq -r '.[] | .title'
+to_choices() {
+    jq -r '.[] | "\(.title) – \(.authors)\t\(.id)"'
 }
 
-readformats() {
-    jq -r --arg choice "$1" '.[] | select(.title == $choice) | .formats'
+available_formats_of() {
+    jq -r --argjson choice "$1" '.[] | select(.id == $choice) | .formats'
 }
 
-# get a single format, prefer pdf over the others
-filterformats() {
+# Pick a book file, preferring PDF over other formats
+pick_file() {
     jq -r '(map(select(endswith("pdf"))) | .[]) // .[0]'
 }
 
-launchreader() {
+launch_reader() {
     # shellcheck disable=SC2039
     local bookpath
     read -r bookpath
@@ -31,9 +31,10 @@ launchreader() {
 }
 
 menu() {
-    rofi -dmenu -i -lines 20 -p "bookmenu"
+    rofi -dmenu -display-columns 1 -display-column-separator '\t' -i -lines 20 -p "bookmenu" | awk -F'\t' '{print $2}'
 }
 
-books=$(getbooks) &&
-    choice=$(printf "%s" "$books" | readtitles | sort | menu) &&
-    printf "%s" "$books" | readformats "$choice" | filterformats | launchreader
+books=$(get_books) &&
+    choice=$(printf "%s" "$books" | to_choices | sort | menu) &&
+    echo "$choice" &&
+    printf "%s" "$books" | available_formats_of "$choice" | pick_file | launch_reader
