@@ -11,17 +11,17 @@ PRESENTATION_STORE=~/docs/presentations
 MANUAL_STORE=~/docs/manuals
 VULNERABILITY_REPORT_STORE=~/docs/vulnerability-reports
 
-getarticles() {
+get_articles() {
     find "$ARTICLE_STORE" "$MANUAL_STORE" "$VULNERABILITY_REPORT_STORE" "$PRESENTATION_STORE" \
         \( -type f -or -type l \) -and -not -path '*/.*' -printf '%P\0'
 }
 
-launchreader() {
+launch_reader() {
     read -r article
     xdg-open "$article"
 }
 
-yankpath() {
+yank_path() {
     xsel -ib
 }
 
@@ -41,7 +41,7 @@ menu() {
     rofi -kb-custom-1 'Alt+y' -dmenu -i -lines 20 -p "articlemenu (alt+y to yank path)"
 }
 
-choice=$(getarticles | sort -z | sed -e 's/\x0/\n/g' | menu)
+choice=$(get_articles | sort -z | sed -e 's/\x0/\n/g' | menu)
 ret=$?
 
 if [ -z "$choice" ]; then
@@ -51,7 +51,7 @@ fi
 filename="$(printf '%s' "$choice" | resolve_article)"
 
 if [ "$ret" -eq 0 ]; then 
-    printf '%s' "$filename" | launchreader 
+    printf '%s' "$filename" | launch_reader 
 elif [ "$ret" -ge 10 ] && [ "$ret" -le 28 ]; then
-    printf '%s' "$filename" | yankpath
+    printf '%s' "$filename" | yank_path
 fi
