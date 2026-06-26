@@ -1,7 +1,7 @@
-#!/bin/sh --
+#!/bin/sh
 # articlemenu
 
-# Copyright (c) 2017 Denis Kasak
+# Copyright (c) 2017–2026 Denis Kasak
 # Distributed under the ISC licence.
 
 # requires rofi xdg-open
@@ -17,26 +17,41 @@ getarticles() {
 }
 
 launchreader() {
-    # shellcheck disable=SC2039
     read -r article
+    xdg-open "$article"
+}
 
-    if [ -r "$ARTICLE_STORE/$article" ]; then
-        xdg-open "$ARTICLE_STORE/$article"
-    elif [ -r "$MANUAL_STORE/$article" ]; then
-        xdg-open "$MANUAL_STORE/$article"
-    elif [ -r "$VULNERABILITY_REPORT_STORE/$article" ]; then
-        xdg-open "$VULNERABILITY_REPORT_STORE/$article"
+yankpath() {
+    xsel -ib
+}
+
+resolve_article() {
+    read -r filename
+
+    if [ -r "$ARTICLE_STORE/$filename" ]; then
+        printf '%s' "$ARTICLE_STORE/$filename"
+    elif [ -r "$MANUAL_STORE/$filename" ]; then
+        printf '%s' "$MANUAL_STORE/$filename"
+    elif [ -r "$VULNERABILITY_REPORT_STORE/$filename" ]; then
+        printf '%s' "$VULNERABILITY_REPORT_STORE/$filename"
     fi
 }
 
 menu() {
-    rofi -dmenu -i -lines 20 -p "articlemenu"
+    rofi -kb-custom-1 'Alt+y' -dmenu -i -lines 20 -p "articlemenu (alt+y to yank path)"
 }
 
 choice=$(getarticles | sort -z | sed -e 's/\x0/\n/g' | menu)
+ret=$?
 
 if [ -z "$choice" ]; then
     exit 1
 fi
 
-printf "%s" "$choice" | launchreader
+filename="$(printf '%s' "$choice" | resolve_article)"
+
+if [ "$ret" -eq 0 ]; then 
+    printf '%s' "$filename" | launchreader 
+elif [ "$ret" -ge 10 ] && [ "$ret" -le 28 ]; then
+    printf '%s' "$filename" | yankpath
+fi
