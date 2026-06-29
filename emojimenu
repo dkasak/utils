@@ -3,24 +3,32 @@
 #
 # Functionally equivalent to rofi-emoji but uses python instead of jq and sh
 
-# Copyright (c) 2017, 2018, 2019 Denis Kasak
+# Copyright (c) 2017, 2018, 2019, 2022 Denis Kasak
 # Distributed under the ISC licence.
 
 # requires python, rofi, xdotool
 #
 # Also requires an emoji definition file. These are currently supported:
-# 1. https://raw.githubusercontent.com/emojione/emojione/master/emoji.json
-# 2. https://raw.githubusercontent.com/github/gemoji/master/db/emoji.json
 #
-# 1 is more complete than 2.
+# 1. a. Save as `emoji.json`:
+#       https://raw.githubusercontent.com/muan/unicode-emoji-json/main/data-by-emoji.json
+#    b. Save as is, alongside `emoji.json` in the same directory:
+#       https://raw.githubusercontent.com/muan/emojilib/main/dist/emoji-en-US.json
+# 2. https://raw.githubusercontent.com/joypixels/emoji-toolkit/master/emoji.json
+# 3. https://raw.githubusercontent.com/github/gemoji/master/db/emoji.json
+#
+# I'd personally recommend 1.
 
 # INSTALL:
-#   1. mkdir -p "$XDG_DATA_HOME"
-#   2. cp emoji.json $XDG_DATA_HOME/emoji.json
+#   1. Download emoji definition file(s).
+#   2. `mkdir -p "$XDG_DATA_HOME"`
+#   3. `cp emoji.json $XDG_DATA_HOME/emoji.json`
+#   4. If using option 1, also `cp data-by-emoji.json $XDG_DATA_HOME/`
 
 import json
 import subprocess
 import os
+from itertools import chain
 
 # SETTINGS
 #
@@ -74,6 +82,50 @@ def emojione_parser(emoji_def):
     return f'{category} {emoji} {desc} {formatted_tags}'
 
 
+def unicode_emoji_json_parser(item):
+    emoji, emoji_def = item
+    category = '{:>10}'.format('|' + emoji_def['group'].title() + '|')
+
+    desc = emoji_def['name']
+
+    if (emoji_def.get('keywords')
+            and emoji_def['keywords']
+            and emoji_def['keywords'][0]):
+        tags = (tag for tag in emoji_def['keywords'] if tag != desc)
+        formatted_tags = '[' + ', '.join(tags) + ']'
+    else:
+        formatted_tags = ''
+
+    if emoji_def.get("skin_tone_support"):
+        skin_tones = [
+            ("1F3FB", "light"),
+            ("1F3FC", "medium light"),
+            ("1F3FD", "medium"),
+            ("1F3FE", "medium dark"),
+            ("1F3FF", "dark")
+        ]
+
+        results = []
+
+        for codepoint, desc_extra in skin_tones:
+            char = chr(int(codepoint, 16))
+            male_sign = chr(int("2642", 16)) + chr(int("FE0F", 16))
+            female_sign = chr(int("2640", 16)) + chr(int("FE0F", 16))
+            if emoji.endswith(male_sign) or emoji.endswith(female_sign):
+                first_char = emoji[0]
+                rest_chars = emoji[1:]
+                full_emoji = first_char + char + rest_chars
+            else:
+                full_emoji = emoji + char
+            full_desc = f"{desc}, {desc_extra} skin"
+
+            results.append(f'{category} {full_emoji} {full_desc} {formatted_tags}')
+
+        return results
+    else:
+        return [f'{category} {emoji} {desc} {formatted_tags}']
+
+
 def sort_by_category(emoji):
     category = emoji['category'].title()
     order = ["People",
@@ -123,16 +175,36 @@ emoji_file = os.path.join(xdg_data_home, 'emoji.json')
 emojis = json.load(open(emoji_file))
 
 # pick appropriate parser and load emoji definitions
-if 'description' in next(iter(emojis)):
-    emoji_menu_item = gemoji_parser
-    emoji_menu_items = [emoji_menu_item(e) for e in emojis
-                        if 'description' in e
-                        if 'emoji' in e]
+if isinstance(emojis, list):
+    test_emoji = next(iter(emojis))
+    if 'description' in test_emoji:
+        emoji_menu_item = gemoji_parser
+        emoji_menu_items = [emoji_menu_item(e) for e in emojis
+                            if 'description' in e
+                            if 'emoji' in e]
+elif isinstance(emojis, dict):
+    test_emoji = next(iter(emojis.values()))
+    if 'group' in test_emoji:
+        # load extra file, for keywords
+        emoji_extra_file = os.path.join(xdg_data_home, 'emoji-en-US.json')
+        emojis_extra = json.load(open(emoji_extra_file))
+
+        # merge in extras
+        emojis = {emoji: definition | {"keywords": emojis_extra.get(emoji)}
+                  for emoji, definition in emojis.items()}
+
+        emoji_menu_item = unicode_emoji_json_parser
+        emoji_menu_items = list(chain.from_iterable(emoji_menu_item(e) for e in emojis.items()))
+    else:
+        emoji_menu_item = emojione_parser
+        emojis = sorted((v for k, v in emojis.items() if len(k) > 4),
+                        key=sort_by_category)
+        emoji_menu_items = [emoji_menu_item(e) for e in emojis]
 else:
-    emoji_menu_item = emojione_parser
-    emojis = sorted((v for k, v in emojis.items() if len(k) > 4),
-                    key=sort_by_category)
-    emoji_menu_items = [emoji_menu_item(e) for e in emojis]
+    print("Error: Definition file neither a list nor a dict.")
+    import sys
+    sys.exit(1)
+
 
 # display menu
 rofi_cmd = ['rofi', '-sync', '-dmenu', '-i', '-lines', '10', '-p', 'emoji']
