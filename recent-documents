@@ -1,22 +1,21 @@
 #!/bin/sh
 # recent-documents - open a recently opened document (with zathura) using a rofi menu
 
-# Copyright (c) 2017 Denis Kasak
+# Copyright (c) 2017–2026 Denis Kasak
 # Distributed under the ISC licence.
 
-# requires rofi zathura
+# requires rofi sqlite3 zathura
 
 if [ -z "$XDG_DATA_HOME" ]; then
     XDG_DATA_HOME="$HOME/.local/share"
 fi
 
 recent_documents() {
-    grep -o "\[.*\]" "$XDG_DATA_HOME/zathura/history" | tr -d "[]"
+    # grep -o "\[.*\]" "$XDG_DATA_HOME/zathura/history" | tr -d "[]" | tac
+    sqlite3 "$XDG_DATA_HOME/zathura/bookmarks.sqlite" "SELECT file FROM fileinfo WHERE file NOT LIKE '/IMPORTED/%' ORDER BY time DESC"
 }
 
 filter_existing() {
-    # shellcheck disable=SC2039
-    local filename
     while read -r filename; do
         [ -e "$filename" ] && printf "%s\n" "$filename"
     done
@@ -34,7 +33,7 @@ menu() {
 choice="$(recent_documents | filter_existing | menu)"
 
 if [ -z "$choice" ]; then
-    exit -1
+    exit 1
 fi
 
-zathura "$choice"
+xdg-open "$choice"
