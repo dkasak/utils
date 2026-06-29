@@ -1,14 +1,35 @@
 #!/bin/sh
 
+### EXTREMELY GNARLY CODE AHEAD
+# It is awful, but it works. Don't ask how. It positions nvim exactly on
+# kitty's cursor position, regardless of how scrolled back you are in kitty's
+# scrollback.
+
+input_line_number="$1"
+scrolled_by="$2"
+cursor_x="$3"
+cursor_y="$4"
+shift 4
+
+if [ "$input_line_number" -eq 0 ]; then
+    delta_y="$((cursor_y - 1))"
+else
+    delta_y="$cursor_y"
+fi
+
+position_cmd="execute $input_line_number | execute \".+$delta_y\" | execute \"normal 0<CR>\" | execute \"normal $((cursor_x - 1))l<CR>\""
+
+### END OF GNARLY CODE
+
 # Starts a minimalistic (n)vim displaying stdin, for keyboard text
 # selection.
 if [ "$EDITOR" != "nvim" ] && [ "$EDITOR" != "vim" ]; then
-    if type nvim; then
+    if type nvim >/dev/null; then
         EDITOR="nvim"
-    elif type vim; then
+    elif type vim >/dev/null; then
         EDITOR="vim"
     else
-        echo "This script needs either nvim or vim."
+        printf '%s\n' "This script needs either nvim or vim."
         exit 1
     fi
 fi
@@ -21,17 +42,27 @@ else
     hide_tildes='echo'
 fi
 
-"$EDITOR" -u NONE \
-+'set nocompatible |
-  set laststatus=0 |
+# "$EDITOR" -u NONE \
+# +'set nocompatible |
+#   set laststatus=0 |
+#   set shortmess=I  |
+#   set guicursor=a:ver100-blinkon0 |
+#   set noruler'             \
+# +"$hide_tildes"            \
+# +'noremap y "+y'           \
+# +'nnoremap j gj'           \
+# +'nnoremap k gk'           \
+# +'nnoremap <C-c> :qa!<CR>' \
+# +'nnoremap q :qa!<CR>'     \
+# +'nnoremap Q :qa!<CR>'     \
+# +'silent! ?^[^\s]? | nohl' "$@" -
+
+"$EDITOR" \
++'set laststatus=0 |
   set shortmess=I  |
   set guicursor=a:ver100-blinkon0 |
   set noruler'             \
 +"$hide_tildes"            \
 +'noremap y "+y'           \
-+'nnoremap j gj'           \
-+'nnoremap k gk'           \
-+'nnoremap <C-c> :qa!<CR>' \
-+'nnoremap q :qa!<CR>'     \
-+'nnoremap Q :qa!<CR>'     \
-+'silent! ?^[^\s]? | nohl' "$@" -
++"$*" \
++"$position_cmd" -
